@@ -9,6 +9,7 @@ spring:
 canal.conf:
   mode: kafka #tcp kafka rocketMQ rabbitMQ
   flatMessage: true
+  #分布式阻塞开关：zk的广播机制 + 本地单机阻塞开关
   zookeeperHosts:
   syncBatchSize: 1000
   retries: -1
