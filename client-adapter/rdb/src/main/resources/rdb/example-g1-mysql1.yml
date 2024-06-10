@@ -9,6 +9,7 @@ dbMapping:
   targetTable: t_user_canal
   targetPk:
     user_id: user_id
+    username: username
 #  mapAll: true
   targetColumns:
     user_id:

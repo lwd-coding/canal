@@ -1,14 +1,12 @@
 package com.alibaba.otter.canal.adapter.launcher.loader;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
+import com.alibaba.otter.canal.adapter.launcher.config.SpringContext;
+import com.alibaba.otter.canal.client.adapter.OuterAdapter;
+import com.alibaba.otter.canal.client.adapter.ProxyOuterAdapter;
+import com.alibaba.otter.canal.client.adapter.support.CanalClientConfig;
+import com.alibaba.otter.canal.client.adapter.support.ExtensionLoader;
+import com.alibaba.otter.canal.client.adapter.support.OuterAdapterConfig;
+import com.alibaba.otter.canal.client.adapter.support.Util;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,13 +16,14 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.util.CollectionUtils;
 
-import com.alibaba.otter.canal.adapter.launcher.config.SpringContext;
-import com.alibaba.otter.canal.client.adapter.OuterAdapter;
-import com.alibaba.otter.canal.client.adapter.ProxyOuterAdapter;
-import com.alibaba.otter.canal.client.adapter.support.CanalClientConfig;
-import com.alibaba.otter.canal.client.adapter.support.ExtensionLoader;
-import com.alibaba.otter.canal.client.adapter.support.OuterAdapterConfig;
-import com.alibaba.otter.canal.client.adapter.support.Util;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 外部适配器的加载器
@@ -50,13 +49,14 @@ public class CanalAdapterLoader {
      */
     public void init() {
         loader = ExtensionLoader.getExtensionLoader(OuterAdapter.class);
-
+        //CanalClientConfig.CanalAdapter代表一个instance
         for (CanalClientConfig.CanalAdapter canalAdapter : canalClientConfig.getCanalAdapters()) {
+            //CanalClientConfig.Group代表instance的多个group
             for (CanalClientConfig.Group group : canalAdapter.getGroups()) {
                 int autoGenId = 0;
                 List<List<OuterAdapter>> canalOuterAdapterGroups = new CopyOnWriteArrayList<>();
                 List<OuterAdapter> canalOuterAdapters = new CopyOnWriteArrayList<>();
-
+                //OuterAdapterConfig是相同组内的适配器
                 for (OuterAdapterConfig config : group.getOuterAdapters()) {
                     // 保证一定有key
                     if (StringUtils.isEmpty(config.getKey())) {
@@ -68,6 +68,7 @@ public class CanalAdapterLoader {
                         config.setKey(key);
                     }
                     autoGenId++;
+                    //加载OuterAdapter并回调init方法然后将其加入到canalOuterAdapters
                     loadAdapter(config, canalOuterAdapters);
                 }
                 canalOuterAdapterGroups.add(canalOuterAdapters);
@@ -78,6 +79,7 @@ public class CanalAdapterLoader {
                                 canalAdapter.getInstance(),group.getGroupId());
                         throw new RuntimeException(msg);
                  }
+                //AdapterProcessor对应一个组内所有适配器【instance + groupId】
                 AdapterProcessor adapterProcessor = canalAdapterProcessors.computeIfAbsent(
                     canalAdapter.getInstance() + "|" + StringUtils.trimToEmpty(group.getGroupId()),
                     f -> new AdapterProcessor(canalClientConfig,

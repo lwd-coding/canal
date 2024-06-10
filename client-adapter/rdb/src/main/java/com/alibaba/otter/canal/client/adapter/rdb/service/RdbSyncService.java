@@ -1,25 +1,5 @@
 package com.alibaba.otter.canal.client.adapter.rdb.service;
 
-import java.sql.Connection;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.function.Function;
-
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.alibaba.druid.pool.DruidDataSource;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONWriter.Feature;
@@ -30,6 +10,17 @@ import com.alibaba.otter.canal.client.adapter.rdb.support.SingleDml;
 import com.alibaba.otter.canal.client.adapter.rdb.support.SyncUtil;
 import com.alibaba.otter.canal.client.adapter.support.Dml;
 import com.alibaba.otter.canal.client.adapter.support.Util;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.Function;
 
 /**
  * RDB同步操作业务
@@ -103,6 +94,7 @@ public class RdbSyncService {
                     function.apply(dml);
                 }
             }
+            //如果有一个dml需要执行在需要遍历所有分片，如果有需要执行的dml则同步执行
             if (toExecute) {
                 List<Future<Boolean>> futures = new ArrayList<>();
                 for (int i = 0; i < threads; i++) {
@@ -111,7 +103,7 @@ public class RdbSyncService {
                         // bypass
                         continue;
                     }
-
+                    //每个dml分片都在各自线程中执行
                     futures.add(executorThreads[i].submit(() -> {
                         try {
                             dmlsPartition[j].forEach(syncItem -> sync(batchExecutors[j],
@@ -127,7 +119,7 @@ public class RdbSyncService {
                         }
                     }));
                 }
-
+                //同步等待各个分片执行结束
                 futures.forEach(future -> {
                     try {
                         future.get();
@@ -155,35 +147,35 @@ public class RdbSyncService {
         sync(dmls, dml -> {
             if (dml.getIsDdl() != null && dml.getIsDdl() && StringUtils.isNotEmpty(dml.getSql())) {
                 // DDL
-            columnsTypeCache.remove(dml.getDestination() + "." + dml.getDatabase() + "." + dml.getTable());
-            return false;
-        } else {
-            // DML
-            String destination = StringUtils.trimToEmpty(dml.getDestination());
-            String groupId = StringUtils.trimToEmpty(dml.getGroupId());
-            String database = dml.getDatabase();
-            String table = dml.getTable();
-            Map<String, MappingConfig> configMap;
-            if (envProperties != null && !"tcp".equalsIgnoreCase(envProperties.getProperty("canal.conf.mode"))) {
-                configMap = mappingConfig.get(destination + "-" + groupId + "_" + database + "-" + table);
+                columnsTypeCache.remove(dml.getDestination() + "." + dml.getDatabase() + "." + dml.getTable());
+                return false;
             } else {
-                configMap = mappingConfig.get(destination + "_" + database + "-" + table);
-            }
+                // DML
+                String destination = StringUtils.trimToEmpty(dml.getDestination());
+                String groupId = StringUtils.trimToEmpty(dml.getGroupId());
+                String database = dml.getDatabase();
+                String table = dml.getTable();
+                Map<String, MappingConfig> configMap;
+                if (envProperties != null && !"tcp".equalsIgnoreCase(envProperties.getProperty("canal.conf.mode"))) {
+                    configMap = mappingConfig.get(destination + "-" + groupId + "_" + database + "-" + table);
+                } else {
+                    configMap = mappingConfig.get(destination + "_" + database + "-" + table);
+                }
+                //如果该消息没有对应的mappingConfig则忽略处理
+                if (configMap == null) {
+                    return false;
+                }
 
-            if (configMap == null) {
-                return false;
+                if (configMap.values().isEmpty()) {
+                    return false;
+                }
+                //如果该消息满足该rdb文件的映射规则则加入dml分片
+                for (MappingConfig config : configMap.values()) {
+                    appendDmlPartition(config, dml);
+                }
+                return true;
             }
-
-            if (configMap.values().isEmpty()) {
-                return false;
-            }
-
-            for (MappingConfig config : configMap.values()) {
-                appendDmlPartition(config, dml);
-            }
-            return true;
-        }
-    }   );
+        });
     }
 
     /**
@@ -353,6 +345,7 @@ public class RdbSyncService {
                 }
             }
         }
+        //存在ddl更新就会触发下面这条语句
         if (!hasMatched) {
             logger.warn("Did not matched any columns to update ");
             return;

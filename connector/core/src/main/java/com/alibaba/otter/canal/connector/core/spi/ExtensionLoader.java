@@ -1,5 +1,9 @@
 package com.alibaba.otter.canal.connector.core.spi;
 
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
@@ -9,17 +13,10 @@ import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
-
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * SPI 类加载器
@@ -108,6 +105,7 @@ public class ExtensionLoader<T> {
         if ("true".equals(name)) {
             return getDefaultExtension(spiDir, standbyDir);
         }
+        //cachedInstances会根据名称缓存插件实例
         Holder<Object> holder = cachedInstances.get(name);
         if (holder == null) {
             cachedInstances.putIfAbsent(name, new Holder<>());
@@ -203,11 +201,13 @@ public class ExtensionLoader<T> {
     }
 
     private Map<String, Class<?>> getExtensionClasses(String spiDir, String standbyDir) {
+        //cachedClasses表示程序能支持的插件
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
             synchronized (cachedClasses) {
                 classes = cachedClasses.get();
                 if (classes == null) {
+                    //加载目录下所有插件
                     classes = loadExtensionClasses(spiDir, standbyDir);
                     cachedClasses.set(classes);
                 }
@@ -247,6 +247,24 @@ public class ExtensionLoader<T> {
         return null;
     }
 
+    /**
+     * 1.在外部目录加载
+     *      1.在指定目录下扫描所有jar文件
+     *      2.针对每个jar文件都会构建一个对应的URLClassLoader
+     *      3.在每个URLClassLoader中搜索指定文件
+     *          META-INF/canal/com.alibaba.otter.canal.connector.core.spi.CanalMQProducer
+     *          META-INF/services/com.alibaba.otter.canal.connector.core.spi.CanalMQProducer
+     *      4.读取文件内容，然后根据全类名进行实例化，内容形式如下：
+     *          kafka=com.alibaba.otter.canal.connector.kafka.producer.CanalKafkaProducer
+     *      5.如果发现相同名称的插件重复加载会抛出异常
+     * 2.在程序classpath中加载
+     *      除了使用的类加载器不一样其它流程均和上述一致
+     *
+     *
+     * @param spiDir
+     * @param standbyDir
+     * @return
+     */
     private Map<String, Class<?>> loadExtensionClasses(String spiDir, String standbyDir) {
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation != null) {

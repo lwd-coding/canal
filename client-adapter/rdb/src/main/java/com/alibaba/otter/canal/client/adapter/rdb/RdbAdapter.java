@@ -1,15 +1,5 @@
 package com.alibaba.otter.canal.client.adapter.rdb;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.apache.commons.lang.BooleanUtils;
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.alibaba.druid.filter.stat.StatFilter;
 import com.alibaba.druid.pool.DruidDataSource;
 import com.alibaba.druid.util.JdbcUtils;
@@ -23,6 +13,15 @@ import com.alibaba.otter.canal.client.adapter.rdb.service.RdbMirrorDbSyncService
 import com.alibaba.otter.canal.client.adapter.rdb.service.RdbSyncService;
 import com.alibaba.otter.canal.client.adapter.rdb.support.SyncUtil;
 import com.alibaba.otter.canal.client.adapter.support.*;
+import org.apache.commons.lang.BooleanUtils;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * RDB适配器实现类
@@ -152,6 +151,7 @@ public class RdbAdapter implements OuterAdapter {
             if (!mappingConfigCache.isEmpty()) {
                 rdbSyncService.sync(mappingConfigCache, dmls, envProperties);
             }
+            //mirrorDb为true才会触发
             rdbMirrorDbSyncService.sync(dmls);
         } catch (Exception e) {
             throw new RuntimeException(e);

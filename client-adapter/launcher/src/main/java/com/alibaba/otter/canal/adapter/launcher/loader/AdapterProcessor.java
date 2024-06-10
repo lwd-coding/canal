@@ -1,16 +1,5 @@
 package com.alibaba.otter.canal.adapter.launcher.loader;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.alibaba.otter.canal.adapter.launcher.common.SyncSwitch;
 import com.alibaba.otter.canal.adapter.launcher.config.SpringContext;
 import com.alibaba.otter.canal.client.adapter.OuterAdapter;
@@ -23,6 +12,16 @@ import com.alibaba.otter.canal.connector.core.consumer.CommonMessage;
 import com.alibaba.otter.canal.connector.core.spi.CanalMsgConsumer;
 import com.alibaba.otter.canal.connector.core.spi.ExtensionLoader;
 import com.alibaba.otter.canal.connector.core.spi.ProxyCanalMsgConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * 适配处理器
@@ -62,6 +61,7 @@ public class AdapterProcessor {
         syncSwitch = (SyncSwitch) SpringContext.getBean(SyncSwitch.class);
 
         // load connector consumer
+        // spi加载连接器
         ExtensionLoader<CanalMsgConsumer> loader = new ExtensionLoader<>(CanalMsgConsumer.class);
         canalMsgConsumer = new ProxyCanalMsgConsumer(loader
             .getExtension(canalClientConfig.getMode().toLowerCase(), destination, CONNECTOR_SPI_DIR,
@@ -87,13 +87,15 @@ public class AdapterProcessor {
         List<Future<Boolean>> futures = new ArrayList<>();
         // 组间适配器并行运行
         // 当 canalOuterAdapters 初始化失败时，消息将会全部丢失
+        //这里的注释组间适配器并行运行其实是触发不到的，因为每个组都会实例化一个AdapterProcessor。。。配置多个组并行的其实是AdapterProcessor
         canalOuterAdapters.forEach(outerAdapters -> {
             futures.add(groupInnerExecutorService.submit(() -> {
                 try {
-                    // 组内适配器穿行运行，尽量不要配置组内适配器
+                    // 组内适配器串行运行，尽量不要配置组内适配器
                     outerAdapters.forEach(adapter -> {
                         long begin = System.currentTimeMillis();
                         List<Dml> dmls = MessageUtil.flatMessage2Dml(canalDestination, groupId, commonMessages);
+                        //适配器同步
                         batchSync(dmls, adapter);
 
                         if (logger.isDebugEnabled()) {
@@ -202,9 +204,12 @@ public class AdapterProcessor {
                                 logger.debug("destination: {} ", canalDestination);
                             }
                             long begin = System.currentTimeMillis();
+                            //通过连接器获取一批数据
                             List<CommonMessage> commonMessages = canalMsgConsumer
                                 .getMessage(this.canalClientConfig.getTimeout(), TimeUnit.MILLISECONDS);
+                            //消费消息
                             writeOut(commonMessages);
+                            //如果没有报错直接全部ack
                             canalMsgConsumer.ack();
                             if (logger.isDebugEnabled()) {
                                 logger.debug("destination: {} elapsed time: {} ms",

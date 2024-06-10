@@ -1,18 +1,17 @@
 package com.alibaba.otter.canal.deployer;
 
-import com.alibaba.otter.canal.connector.core.spi.ProxyCanalMQProducer;
-import java.util.Properties;
-
+import com.alibaba.otter.canal.admin.netty.CanalAdminWithNetty;
 import com.alibaba.otter.canal.connector.core.config.MQProperties;
+import com.alibaba.otter.canal.connector.core.spi.CanalMQProducer;
+import com.alibaba.otter.canal.connector.core.spi.ExtensionLoader;
+import com.alibaba.otter.canal.connector.core.spi.ProxyCanalMQProducer;
+import com.alibaba.otter.canal.deployer.admin.CanalAdminController;
+import com.alibaba.otter.canal.server.CanalMQStarter;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.otter.canal.admin.netty.CanalAdminWithNetty;
-import com.alibaba.otter.canal.connector.core.spi.CanalMQProducer;
-import com.alibaba.otter.canal.connector.core.spi.ExtensionLoader;
-import com.alibaba.otter.canal.deployer.admin.CanalAdminController;
-import com.alibaba.otter.canal.server.CanalMQStarter;
+import java.util.Properties;
 
 /**
  * Canal server 启动类
@@ -63,8 +62,12 @@ public class CanalStarter {
      */
     public synchronized void start() throws Throwable {
         String serverMode = CanalController.getProperty(properties, CanalConstants.CANAL_SERVER_MODE);
+        //如果服务端不是TCP模式，则以约定的形式自动加载CanalMQProducer【SPI】
         if (!"tcp".equalsIgnoreCase(serverMode)) {
+            //指定一个类型为CanalMQProducer的拓展加载器
             ExtensionLoader<CanalMQProducer> loader = ExtensionLoader.getExtensionLoader(CanalMQProducer.class);
+            //通过拓展加载器在指定目录下加载指定模式的CanalMQProducer实现类
+            //连接插件的约定目录是/plugin或者/canal/plugin，实际查找的时候还会在目录面前加一个启动路径,如果是idea本地模块则是target目录，否则是user.dir
             canalMQProducer = loader
                 .getExtension(serverMode.toLowerCase(), CONNECTOR_SPI_DIR, CONNECTOR_STANDBY_SPI_DIR);
             if (canalMQProducer != null) {

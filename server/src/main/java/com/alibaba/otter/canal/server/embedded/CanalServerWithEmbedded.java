@@ -1,20 +1,5 @@
 package com.alibaba.otter.canal.server.embedded;
 
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.otter.canal.common.AbstractCanalLifeCycle;
 import com.alibaba.otter.canal.instance.core.CanalInstance;
 import com.alibaba.otter.canal.instance.core.CanalInstanceGenerator;
@@ -34,9 +19,18 @@ import com.alibaba.otter.canal.store.CanalEventStore;
 import com.alibaba.otter.canal.store.memory.MemoryEventStoreWithBuffer;
 import com.alibaba.otter.canal.store.model.Event;
 import com.alibaba.otter.canal.store.model.Events;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.MigrateMap;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.util.CollectionUtils;
+
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * 嵌入式版本实现
@@ -78,7 +72,11 @@ public class CanalServerWithEmbedded extends AbstractCanalLifeCycle implements C
                 metrics.setServerPort(metricsPort);
                 metrics.initialize();
             }
-            canalInstances = MigrateMap.makeComputingMap(destination -> canalInstanceGenerator.generate(destination));
+            canalInstances = MigrateMap.makeComputingMap((destination) ->
+                    {
+                      return   canalInstanceGenerator.generate(destination);
+                    }
+            );
             // lastRollbackPostions = new MapMaker().makeMap();
         }
     }

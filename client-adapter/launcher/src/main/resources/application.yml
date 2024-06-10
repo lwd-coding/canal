@@ -57,10 +57,24 @@ canal.conf:
     groups:
     - groupId: g1
       outerAdapters:
-      - name: logger
       - name: rdb
         key: mysql1
         properties:
+          #dml并行
+          threads: 6
+          jdbc.driverClassName: com.mysql.jdbc.Driver
+          jdbc.url: jdbc:mysql://101.42.7.233:11101/user_db?useUnicode=true
+          jdbc.username: root
+          jdbc.password: awdhudg2177123@@q
+          druid.stat.enable: false
+          druid.stat.slowSqlMillis: 1000
+    - groupId: g2
+      outerAdapters:
+      - name: rdb
+        key: mysql2
+        properties:
+          #dml并行
+          threads: 6
           jdbc.driverClassName: com.mysql.jdbc.Driver
           jdbc.url: jdbc:mysql://101.42.7.233:11101/user_db?useUnicode=true
           jdbc.username: root

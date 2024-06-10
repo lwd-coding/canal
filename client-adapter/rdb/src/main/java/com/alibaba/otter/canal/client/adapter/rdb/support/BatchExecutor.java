@@ -51,7 +51,6 @@ public class BatchExecutor implements Closeable {
     }
 
     public void execute(String sql, List<Map<String, ?>> values) throws SQLException {
-        logger.info("rdb适配器执行语句: " + sql);
         PreparedStatement pstmt = getConn().prepareStatement(sql);
         int len = values.size();
         for (int i = 0; i < len; i++) {
@@ -59,8 +58,8 @@ public class BatchExecutor implements Closeable {
             Object value = values.get(i).get("value");
             SyncUtil.setPStmt(type, pstmt, value, i + 1);
         }
-
         pstmt.execute();
+        logger.info("rdb适配器dml执行语句: " + pstmt);
         idx.incrementAndGet();
         pstmt.close();
     }

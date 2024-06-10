@@ -1,21 +1,20 @@
 package com.alibaba.otter.canal.deployer;
 
+import com.alibaba.otter.canal.common.utils.AddressUtils;
+import com.alibaba.otter.canal.common.utils.NamedThreadFactory;
+import com.alibaba.otter.canal.instance.manager.plain.PlainCanal;
+import com.alibaba.otter.canal.instance.manager.plain.PlainCanalConfigClient;
+import org.apache.commons.lang.BooleanUtils;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileInputStream;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import org.apache.commons.lang.BooleanUtils;
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.alibaba.otter.canal.common.utils.AddressUtils;
-import com.alibaba.otter.canal.common.utils.NamedThreadFactory;
-import com.alibaba.otter.canal.instance.manager.plain.PlainCanal;
-import com.alibaba.otter.canal.instance.manager.plain.PlainCanalConfigClient;
 
 /**
  * canal独立版本启动的入口类
@@ -40,6 +39,7 @@ public class CanalLauncher {
             System.setProperty("rocketmq.client.logUseSlf4j","true");
 
             logger.info("## load canal configurations");
+            //如果存在canal.conf系统属性则本地文件加载该配置，如果不存在则去classpath加载canal.properties
             String conf = System.getProperty("canal.conf", "classpath:canal.properties");
             Properties properties = new Properties();
             if (conf.startsWith(CLASSPATH_URL_PREFIX)) {

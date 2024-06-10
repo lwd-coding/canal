@@ -206,6 +206,7 @@ public class CanalMQStarter {
                 logger.error("process error!", e);
             }
         }
+        logger.info("## finish the MQ producer: {}.", destination);
     }
 
     private class CanalMQRunnable implements Runnable {
