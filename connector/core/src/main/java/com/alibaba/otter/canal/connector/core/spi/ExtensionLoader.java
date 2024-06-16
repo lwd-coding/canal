@@ -191,15 +191,14 @@ public class ExtensionLoader<T> {
                                             + ")  could not be instantiated: class could not be found");
         }
         try {
-            T instance = (T) clazz.newInstance();
-//            if (instance == null) {
-//                EXTENSION_KEY_INSTANCE.putIfAbsent(name + "-" + key, clazz.newInstance());
-//                instance = (T) EXTENSION_KEY_INSTANCE.get(name + "-" + key);
-//            } else {
-//                //todo 在相同instance配置不同组但是使用同个插件会存在复用instance的问题，导致报KafkaConsumer is not safe for multi-threaded access Error sync and rollback
-//                System.out.println("name:" + name + "  key:" + key);
-//                System.out.println("threadName: " + Thread.currentThread().getName() + "    复用了instance: " + instance.hashCode());
-//            }
+            T instance = (T) EXTENSION_KEY_INSTANCE.get(name + "-" + key);
+            if (instance == null) {
+                EXTENSION_KEY_INSTANCE.putIfAbsent(name + "-" + key, clazz.newInstance());
+                instance = (T) EXTENSION_KEY_INSTANCE.get(name + "-" + key);
+            } else {
+                System.out.println("name:" + name + "  key:" + key);
+                System.out.println("threadName: " + Thread.currentThread().getName() + "    复用了instance: " + instance.hashCode());
+            }
             return instance;
         } catch (Throwable t) {
             throw new IllegalStateException("Extension instance(name: " + name + ", class: " + type
