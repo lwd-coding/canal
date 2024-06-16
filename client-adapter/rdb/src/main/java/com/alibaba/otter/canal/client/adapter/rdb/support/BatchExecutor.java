@@ -59,7 +59,7 @@ public class BatchExecutor implements Closeable {
             SyncUtil.setPStmt(type, pstmt, value, i + 1);
         }
         pstmt.execute();
-        logger.info("rdb适配器dml执行语句: " + pstmt);
+        logger.info("dml执行语句: " + pstmt);
         idx.incrementAndGet();
         pstmt.close();
     }
