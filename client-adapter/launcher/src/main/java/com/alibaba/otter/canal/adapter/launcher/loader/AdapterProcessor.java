@@ -63,7 +63,7 @@ public class AdapterProcessor {
         // load connector consumer
         // spi加载连接器
         ExtensionLoader<CanalMsgConsumer> loader = new ExtensionLoader<>(CanalMsgConsumer.class);
-        ////todo 在相同instance配置不同组但是使用同个插件会存在复用instance的问题，导致报KafkaConsumer is not safe for multi-threaded access Error sync and rollback
+        //todo 修复mode为kafka，同个instance配置多个group报KafkaConsumer is not safe for multi-threaded access Error sync and rollback的问题
         String key = destination + "-" + groupId;
         canalMsgConsumer = new ProxyCanalMsgConsumer(loader
             .getExtension(canalClientConfig.getMode().toLowerCase(), key, CONNECTOR_SPI_DIR,
