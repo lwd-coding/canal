@@ -12,6 +12,7 @@ import com.alibaba.otter.canal.connector.core.consumer.CommonMessage;
 import com.alibaba.otter.canal.connector.core.spi.CanalMsgConsumer;
 import com.alibaba.otter.canal.connector.core.spi.ExtensionLoader;
 import com.alibaba.otter.canal.connector.core.spi.ProxyCanalMsgConsumer;
+import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -210,7 +211,9 @@ public class AdapterProcessor {
                             List<CommonMessage> commonMessages = canalMsgConsumer
                                 .getMessage(this.canalClientConfig.getTimeout(), TimeUnit.MILLISECONDS);
                             //消费消息
-                            writeOut(commonMessages);
+                            if (CollectionUtils.isNotEmpty(commonMessages)) {
+                                writeOut(commonMessages);
+                            }
                             //如果没有报错直接全部ack
                             canalMsgConsumer.ack();
                             if (logger.isDebugEnabled()) {
@@ -221,9 +224,11 @@ public class AdapterProcessor {
                             break;
                         } catch (Exception e) {
                             if (i != retry - 1) {
-                                canalMsgConsumer.rollback(); // 处理失败, 回滚数据
+                                // 失败后还在重试次数范围内则不断修改mq的offset为当前失败的offset
+                                canalMsgConsumer.rollback();
                                 logger.error(e.getMessage() + " Error sync and rollback, execute times: " + (i + 1));
                             } else {
+                                //如果超过重试次数直接ack
                                 if (canalClientConfig.getTerminateOnException()) {
                                     canalMsgConsumer.rollback();
                                     logger.error("Retry fail, turn switch off and abort data transfer.");
